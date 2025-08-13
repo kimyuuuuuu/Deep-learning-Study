@@ -63,3 +63,5 @@ class ScaleDotProductAttention(nn.Module):
         output = torch.matmul(score, V) # @ == matmul(), 유지보수를 위해 output에 저장. 
         
         return output, score 
+        # output = attention 가중치(score)를 V에 곱한 결과
+        # score = Q, K의 유사도 계산 후 softmax로 정규화한 attention 확률분포
