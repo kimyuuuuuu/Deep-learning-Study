@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch 
 
-from Scaled_dot_product_Attention import ScaleDotProductAttention
+from module.Scaled_dot_product_Attention import ScaleDotProductAttention
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads, dropout=0.1):
@@ -39,10 +39,8 @@ class MultiHeadAttention(nn.Module):
         # 4) concat + final proj
         out = self.concat(out)                 # [B,L,d_model]
         out = self.w_concat(out)               # [B,L,d_model]
-
-        if return_attention:
-            return out, attn
-        return out
+        
+        return out, attn
 
     def split(self, tensor):
         # batch_size, length, d_model = tensor.size()
