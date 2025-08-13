@@ -11,7 +11,7 @@ import math
 from sklearn.metrics import accuracy_score
 import time
 
-from module.MultiHead_Attention import MultiHeadAttention
+from Attention.module.MultiHead_SelfAttention import MultiHeadAttention
 
 # 1. 기본 검증: 차원 확인
 def test_dimensions():
