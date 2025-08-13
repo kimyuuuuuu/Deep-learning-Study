@@ -28,6 +28,8 @@ class ScaleDotProductAttention(nn.Module):
         # 모델 호출 시마다 실행, 실제 데이터 연산 수행
         
         # input is 4 dimension tensor [batch size, head, length, d_tensor]
+        # batch size = 배치사이즈, head=multi-head attention 헤드 수, length = 토큰 개수(문장 길이), d_tensor = 한 헤드가 보는 임베딩 차원 수
+        # 이미지일 경우 length = patch 개수, d_model = patch 임베딩 후 feature 벡터 크기 등
         # batch_size, head, length, d_tensor = K.size() 
         # => 입력 텐서가 무조건 [B, H, L, D] 모양일 경우
         

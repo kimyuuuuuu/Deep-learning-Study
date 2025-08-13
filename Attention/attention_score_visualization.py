@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,7 +7,9 @@ import seaborn as sns
 import numpy as np
 import math
 
-from Scaled_dot_product_Attention import ScaleDotProductAttention
+from module.Scaled_dot_product_Attention import ScaleDotProductAttention
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 class SimpleTokenizer:
     def __init__(self):
@@ -149,7 +152,7 @@ def compare_different_sentences():
     
     tokenizer = SimpleTokenizer()
     embedding = create_simple_embeddings()
-    attention_layer = ScaledDotProductAttention()
+    attention_layer = ScaleDotProductAttention()
     
     for idx, sentence in enumerate(sentences):
         tokens = tokenizer.tokenize(sentence)
