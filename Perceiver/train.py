@@ -109,10 +109,12 @@ class PerceiverTrainer:
         
     def _create_model(self) -> PerceiverModel:
         """모델 생성"""
+        num_latents = getattr(self.config, 'num_latents', None)
         return create_perceiver_model(
             input_dim=self.config.input_dim,
             num_classes=self.config.num_classes,
-            model_size=self.config.model_size
+            model_size=self.config.model_size,
+            num_latents=num_latents
         )
     
     def count_parameters(self) -> int:
@@ -332,9 +334,21 @@ def create_data_loaders(config: TrainingConfig):
             train=False
         )
         
-        # CIFAR-10의 경우 입력 차원 업데이트
+        # CIFAR-10의 경우 입력 차원 및 시퀀스 길이 업데이트
         config.input_dim = config.patch_size * config.patch_size * 3
         config.num_classes = 10
+        # CIFAR-10 32x32를 8x8 패치로 나누면 16개 패치
+        patches_per_side = 32 // config.patch_size
+        num_patches = patches_per_side * patches_per_side
+        print(f"CIFAR-10 패치 수: {num_patches}")
+        
+        # Perceiver의 num_latents를 패치 수에 맞게 조정하거나 더 작게 설정
+        if config.model_size == 'base':
+            config_dict['num_latents'] = min(64, num_patches)  # 패치보다 적게 설정
+        elif config.model_size == 'small':  
+            config_dict['num_latents'] = min(32, num_patches)
+        else:  # large
+            config_dict['num_latents'] = min(128, num_patches)
         
     else:
         raise ValueError(f"지원하지 않는 데이터셋 타입: {config.dataset_type}")
@@ -356,6 +370,8 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-4, help='학습률')
     parser.add_argument('--resume', type=str, default=None,
                        help='재개할 체크포인트 경로')
+    parser.add_argument('--device', type=str, default='auto',
+                       choices=['auto', 'cuda', 'cpu'], help='사용할 장치')
     
     args = parser.parse_args()
     
@@ -365,14 +381,36 @@ def main():
         with open(args.config, 'r') as f:
             config_dict = json.load(f)
     
+    # 장치 설정
+    if args.device == 'auto':
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    else:
+        device = args.device
+    
     # 명령줄 인수로 설정 덮어쓰기
     config_dict.update({
         'dataset_type': args.dataset,
         'model_size': args.model_size,
         'batch_size': args.batch_size,
         'num_epochs': args.epochs,
-        'learning_rate': args.lr
+        'learning_rate': args.lr,
+        'device': device
     })
+    
+    # 모델 생성을 위해 config_dict를 먼저 처리
+    temp_config = TrainingConfig(config_dict)
+    
+    # CIFAR-10인 경우 추가 설정 처리
+    if temp_config.dataset_type == 'cifar10':
+        patches_per_side = 32 // temp_config.patch_size
+        num_patches = patches_per_side * patches_per_side
+        
+        if temp_config.model_size == 'base':
+            config_dict['num_latents'] = min(64, num_patches)
+        elif temp_config.model_size == 'small':  
+            config_dict['num_latents'] = min(32, num_patches)
+        else:  # large
+            config_dict['num_latents'] = min(128, num_patches)
     
     config = TrainingConfig(config_dict)
     

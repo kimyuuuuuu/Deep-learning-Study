@@ -50,11 +50,25 @@ class MultiHeadAttention(nn.Module):
         
         if mask is not None:
             # mask가 0인 곳을 매우 작은 값으로 설정
-            mask = mask.unsqueeze(1).expand_as(scores)
+            # Cross-attention의 경우: mask는 (batch_size, seq_len_k) 형태
+            # Self-attention의 경우: mask는 (batch_size, seq_len_q, seq_len_k) 형태일 수 있음
+            
+            if mask.dim() == 2:  # Cross-attention: (batch_size, seq_len_k)
+                # (batch_size, seq_len_k) -> (batch_size, 1, 1, seq_len_k)
+                mask = mask.unsqueeze(1).unsqueeze(1)
+                # (batch_size, 1, 1, seq_len_k) -> (batch_size, num_heads, seq_len_q, seq_len_k)
+                mask = mask.expand(-1, self.num_heads, scores.size(2), -1)
+            elif mask.dim() == 3:  # Self-attention: (batch_size, seq_len_q, seq_len_k)
+                # (batch_size, seq_len_q, seq_len_k) -> (batch_size, num_heads, seq_len_q, seq_len_k)
+                mask = mask.unsqueeze(1).expand(-1, self.num_heads, -1, -1)
+            
             scores = scores.masked_fill(mask == 0, -1e9)
         
         attention_weights = F.softmax(scores, dim=-1)
         attention_weights = self.dropout(attention_weights)
+        
+        # 어텐션 가중치 저장 (시각화용)
+        self.last_attention_weights = attention_weights.detach()
         
         # 어텐션 적용
         context = torch.matmul(attention_weights, V)
@@ -295,7 +309,7 @@ class PerceiverModel(nn.Module):
 
 
 def create_perceiver_model(input_dim: int, num_classes: int = 10, 
-                          model_size: str = 'base') -> PerceiverModel:
+                          model_size: str = 'base', num_latents: int = None) -> PerceiverModel:
     """
     Perceiver 모델을 생성하는 헬퍼 함수
     
@@ -331,6 +345,10 @@ def create_perceiver_model(input_dim: int, num_classes: int = 10,
             'num_self_attention_layers': 8,
             'num_latents': 512
         }
+    
+    # num_latents가 지정된 경우 덮어쓰기
+    if num_latents is not None:
+        config['num_latents'] = num_latents
     
     return PerceiverModel(
         input_dim=input_dim,
